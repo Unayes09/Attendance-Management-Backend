@@ -216,34 +216,37 @@ exports.deleteCourse = async(req,res)=>{
   }
 }
 
-exports.studentReport = async(req,res)=>{
-  const regNo = req.query.student
+exports.studentReport = async (req, res) => {
+  const regNo = req.query.student;
   try {
-    // Find the student by registration number
-    const student = await teacher.findOne({ "course.student.reg_no": regNo })
+    // Find all teachers where at least one student has the given registration number
+    const teachers = await teacher.find({ "course.student.reg_no": regNo });
 
-    if (!student) {
-      return res.status(404).json({ message: "Student not found" })
+    if (!teachers || teachers.length === 0) {
+      return res.status(404).json({ message: "No teachers found for the given student registration number" });
     }
 
     const studentCourses = [];
 
-    // Iterate through the courses to find the ones attended by the student
-    student.course.forEach(course => {
-      const attendedCourse = course.student.find(student => student.reg_no === regNo);
-      if (attendedCourse) {
-        studentCourses.push({
-          course_title: course.course_title,
-          course_code: course.course_code,
-          att: attendedCourse.att,
-          total: attendedCourse.total
-        });
-      }
+    // Iterate through each teacher's courses to find the ones attended by the student
+    teachers.forEach(teacher => {
+      teacher.course.forEach(course => {
+        const attendedCourse = course.student.find(student => student.reg_no === regNo);
+        if (attendedCourse) {
+          studentCourses.push({
+            teacher_name: teacher.teacher_name, // Include teacher name if needed
+            course_title: course.course_title,
+            course_code: course.course_code,
+            att: attendedCourse.att,
+            total: attendedCourse.total
+          });
+        }
+      });
     });
 
-    return res.status(200).json({courses:studentCourses})
+    return res.status(200).json({ courses: studentCourses });
   } catch (error) {
-    console.error(error)
-    return res.status(500).json({ message: "Internal Server Error" })
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
